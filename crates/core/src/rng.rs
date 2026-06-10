@@ -28,17 +28,15 @@ impl WorldRng {
 
     /// Serialize the full RNG state (seed + stream + word position) for the
     /// `world.rng_state` BLOB. Restoring this resumes the stream exactly.
+    /// Stored as JSON bytes (the column is a BLOB; the encoding is an internal
+    /// detail).
     pub fn to_state_blob(&self) -> Result<Vec<u8>> {
-        Ok(bincode::serde::encode_to_vec(
-            &self.0,
-            bincode::config::standard(),
-        )?)
+        Ok(serde_json::to_vec(&self.0)?)
     }
 
     /// Restore an RNG previously captured by [`Self::to_state_blob`].
     pub fn from_state_blob(bytes: &[u8]) -> Result<Self> {
-        let (rng, _) = bincode::serde::decode_from_slice(bytes, bincode::config::standard())?;
-        Ok(Self(rng))
+        Ok(Self(serde_json::from_slice(bytes)?))
     }
 
     /// Draw the next `u32` from the stream.

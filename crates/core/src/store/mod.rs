@@ -173,9 +173,7 @@ pub fn query_by_customer(conn: &Connection, customer_id: &str) -> Result<Vec<Val
 /// Every object as `(id, api_state)`, ordered by id — for deterministic dumps.
 pub fn all_objects(conn: &Connection) -> Result<Vec<(String, Value)>> {
     let mut stmt = conn.prepare("SELECT id, api_state FROM objects ORDER BY id ASC")?;
-    let rows = stmt.query_map([], |r| {
-        Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
-    })?;
+    let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
     let mut out = Vec::new();
     for row in rows {
         let (id, raw) = row?;
@@ -187,7 +185,13 @@ pub fn all_objects(conn: &Connection) -> Result<Vec<(String, Value)>> {
 // --- event helpers -----------------------------------------------------------
 
 /// Insert an event row.
-pub fn put_event(conn: &Connection, id: &str, type_: &str, payload: &Value, created: i64) -> Result<()> {
+pub fn put_event(
+    conn: &Connection,
+    id: &str,
+    type_: &str,
+    payload: &Value,
+    created: i64,
+) -> Result<()> {
     conn.execute(
         "INSERT INTO events (id, type, payload, created) VALUES (?1, ?2, ?3, ?4)",
         params![id, type_, serde_json::to_string(payload)?, created],

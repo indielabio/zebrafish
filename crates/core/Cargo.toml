@@ -25,10 +25,8 @@ rand_chacha = { version = "0.9", features = ["serde"] }
 fake = { version = "4", features = ["derive"] }
 
 serde = { version = "1", features = ["derive"] }
+# Also encodes the `rng_state` BLOB (as JSON bytes) — no extra dep needed.
 serde_json = "1"
-
-# Compact binary encoding for the `rng_state` BLOB column.
-bincode = { version = "2", features = ["serde"] }
 
 # Broadcast channel ONLY (no runtime, no net) so `core` stays HTTP-free while
 # still handing the async server/dashboard a subscribable notification bus.

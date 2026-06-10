@@ -64,11 +64,7 @@ impl World {
 
     /// Apply `mutator` to an existing object and persist it. Returns the updated
     /// `api_state`. Errors with [`CoreError::NotFound`] if the id is unknown.
-    pub fn update_object(
-        &mut self,
-        id: &str,
-        mutator: impl FnOnce(&mut Value),
-    ) -> Result<Value> {
+    pub fn update_object(&mut self, id: &str, mutator: impl FnOnce(&mut Value)) -> Result<Value> {
         let mut stored = self
             .store
             .read(|c| crate::store::get(c, id))?
@@ -85,7 +81,8 @@ impl World {
             save_world_row(tx, &row)
         })?;
 
-        self.bus.publish(Notification::ObjectWritten(updated.clone()));
+        self.bus
+            .publish(Notification::ObjectWritten(updated.clone()));
         Ok(updated)
     }
 

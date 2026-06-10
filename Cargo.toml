@@ -27,6 +27,7 @@ all = "warn"
 # workspace.package.version) so they read as pinned, not wildcard, to cargo-deny.
 zebrafish-core = { path = "crates/core", version = "0.0.0" }
 zebrafish-dashboard = { path = "crates/dashboard", version = "0.0.0" }
+zebrafish-test-support = { path = "crates/test-support", version = "0.0.0" }
 
 # Build all release artifacts (the shipped binary) optimized for size + speed.
 [profile.release]

@@ -1,0 +1,14 @@
+---
+source: crates/server/tests/error_golden.rs
+expression: e.to_json()
+---
+{
+  "error": {
+    "code": "card_declined",
+    "decline_code": "insufficient_funds",
+    "doc_url": "https://stripe.com/docs/error-codes/card-declined",
+    "message": "Your card has insufficient funds.",
+    "param": null,
+    "type": "card_error"
+  }
+}

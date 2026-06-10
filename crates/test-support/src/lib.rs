@@ -1,8 +1,8 @@
 //! Shared test harness for zebrafish (dev-dependency only).
 //!
 //! WS-A/WS-B provide [`WorldBuilder`], an in-process factory for seeded
-//! [`World`](zebrafish_core::World)s. The out-of-process `Zebrafish::spawn`
-//! spawner and `CaptureServer` land with the full harness in WS-K (#103).
+//! [`World`]s. The out-of-process `Zebrafish::spawn` spawner and
+//! `CaptureServer` land with the full harness in WS-K (#103).
 
 use tempfile::TempDir;
 use zebrafish_core::World;

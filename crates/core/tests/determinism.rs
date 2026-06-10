@@ -91,7 +91,11 @@ fn two_worlds_same_seed_are_byte_identical() {
 
     assert_eq!(ta1, tb1, "first-half id traces diverged");
     assert_eq!(ta2, tb2, "second-half id traces diverged");
-    assert_eq!(dump(&a), dump(&b), "object state diverged for identical seed");
+    assert_eq!(
+        dump(&a),
+        dump(&b),
+        "object state diverged for identical seed"
+    );
 }
 
 #[test]

@@ -1,0 +1,12 @@
+---
+source: crates/server/tests/error_golden.rs
+expression: "StripeError::unimplemented(\"GET\", \"/v1/coupons\").to_json()"
+---
+{
+  "error": {
+    "code": "not_implemented",
+    "message": "zebrafish does not implement GET /v1/coupons yet. Coverage: /_dashboard/coverage. Contribute: https://github.com/indielabio/zebrafish/blob/main/docs/CONTRIBUTING.md",
+    "param": null,
+    "type": "invalid_request_error"
+  }
+}

@@ -21,11 +21,7 @@ pub fn email(rng: &mut WorldRng, name: &str) -> String {
     let first = parts.next().unwrap_or("user");
     let last = parts.last().unwrap_or(first);
 
-    let initial = first
-        .chars()
-        .next()
-        .unwrap_or('u')
-        .to_ascii_lowercase();
+    let initial = first.chars().next().unwrap_or('u').to_ascii_lowercase();
     let last_clean: String = last
         .chars()
         .filter(|c| c.is_ascii_alphanumeric())

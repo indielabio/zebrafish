@@ -1,0 +1,12 @@
+---
+source: crates/server/tests/error_golden.rs
+expression: "StripeError::invalid_request(\"Missing required param: name.\").to_json()"
+---
+{
+  "error": {
+    "code": null,
+    "message": "Missing required param: name.",
+    "param": null,
+    "type": "invalid_request_error"
+  }
+}
