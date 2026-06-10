@@ -16,9 +16,11 @@ FROM rust:1.96-bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends musl-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# Map Docker's TARGETARCH (amd64|arm64) to the Rust musl triple. Provided
-# automatically by buildx; default to amd64 for plain `docker build`.
-ARG TARGETARCH=amd64
+# Map Docker's TARGETARCH (amd64|arm64) to the Rust musl triple. BuildKit
+# auto-populates TARGETARCH from the build platform — but ONLY for a bare `ARG`
+# with no default (a default value suppresses the automatic value). Requires
+# BuildKit (guaranteed by the `# syntax=` directive at the top).
+ARG TARGETARCH
 RUN case "$TARGETARCH" in \
         amd64) echo x86_64-unknown-linux-musl  > /tmp/triple ;; \
         arm64) echo aarch64-unknown-linux-musl > /tmp/triple ;; \
