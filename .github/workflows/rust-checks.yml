@@ -131,8 +131,22 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  coverage-matrix:
+    name: coverage-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - name: docs/COVERAGE.md is fresh
+        # The doc is generated from the resource registry (spec §12); fail if a
+        # registry change landed without regenerating it.
+        run: |
+          cargo run -p gen-coverage
+          git diff --exit-code docs/COVERAGE.md
+
   # TODO(WS-I): conformance vs emulator (hermetic) — required for merge once the
   #   harness exists. See conformance/.
   # TODO(WS-F): stripe-go + stripe-node signature-verifier jobs.
   # TODO(WS-G): Playwright checkout E2E (chromium).
-  # TODO(WS-D/J): fixture-schema validation + coverage-matrix freshness.
+  # TODO(WS-D/J): fixture-schema validation.
