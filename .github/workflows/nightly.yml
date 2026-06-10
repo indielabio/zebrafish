@@ -23,7 +23,7 @@ jobs:
     env:
       STRIPE_SANDBOX_KEY: ${{ secrets.STRIPE_SANDBOX_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: rustup show
       - uses: Swatinem/rust-cache@v2
       # TODO(WS-I): run `conformance/` against target=stripe and diff. On
@@ -39,7 +39,7 @@ jobs:
     if: ${{ vars.MUTANTS_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: rustup show
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
@@ -58,7 +58,7 @@ jobs:
     if: ${{ vars.SMOKE_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: rustup show
       - uses: Swatinem/rust-cache@v2
       # TODO(WS-K): boot ghcr.io/indielabio/zebrafish:edge via testcontainers-rs,
