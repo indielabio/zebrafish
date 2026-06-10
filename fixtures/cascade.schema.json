@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zebrafish.dev/cascade.schema.json",
+  "title": "zebrafish cascade fixture",
+  "description": "A declarative cascade (spec §7.2): when `trigger` fires and every `when` clause matches the trigger context, `steps` run in order inside one transaction.",
+  "type": "object",
+  "required": ["id", "trigger", "recorded", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$",
+      "description": "Unique fixture id, e.g. subscription.renew.card_success"
+    },
+    "trigger": {
+      "type": "string",
+      "pattern": "^(checkout\\.complete|subscription\\.(renew|cancel)|crud\\.[a-z_.]+\\.(created|updated|deleted))$",
+      "description": "Hardcoded trigger this cascade answers (spec §7.1)"
+    },
+    "when": {
+      "type": "object",
+      "description": "Dotted context paths -> required scalar values; all must match",
+      "additionalProperties": { "type": ["string", "number", "boolean", "null"] }
+    },
+    "recorded": {
+      "type": "object",
+      "required": ["source", "stripe_api_version"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "enum": ["hand-built", "stripe-test-mode"] },
+        "stripe_api_version": { "type": "string" },
+        "recorded_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/create" },
+        { "$ref": "#/$defs/update" },
+        { "$ref": "#/$defs/emit" }
+      ]
+    },
+    "create": {
+      "type": "object",
+      "required": ["op", "type", "bind", "state"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "create" },
+        "type": { "type": "string" },
+        "bind": { "$ref": "#/$defs/binding" },
+        "state": { "type": "object" }
+      }
+    },
+    "update": {
+      "type": "object",
+      "required": ["op", "object", "set"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "update" },
+        "object": { "$ref": "#/$defs/binding" },
+        "set": { "type": "object", "minProperties": 1 }
+      }
+    },
+    "emit": {
+      "type": "object",
+      "required": ["op", "event", "object"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "emit" },
+        "event": { "type": "string", "pattern": "^[a-z_.]+$" },
+        "object": { "$ref": "#/$defs/binding" }
+      }
+    },
+    "binding": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }
+  }
+}

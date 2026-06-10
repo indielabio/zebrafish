@@ -1,29 +1,33 @@
 //! `GET /_config/coverage` (spec §12) — the supported-surface matrix.
 //!
 //! Derived from the resource registry (resources, routes, CRUD events) plus
-//! the packaged cascade fixtures (`fixtures/cascades/`, empty until WS-E), so
-//! it can never drift from what is actually mounted. `tools/gen-coverage`
-//! renders the same data into `docs/COVERAGE.md`.
+//! the *loaded* cascade library (embedded packaged fixtures, or the
+//! `--cascades-dir` override), so it can never drift from what is actually
+//! mounted. `tools/gen-coverage` renders the same data into
+//! `docs/COVERAGE.md`.
 
 use axum::Json;
+use axum::extract::State;
 use serde_json::{Value, json};
 
 use crate::resource::{Resource, registry};
+use crate::state::AppState;
 
 /// `GET /_config/coverage` — the matrix as JSON.
-pub async fn coverage() -> Json<Value> {
-    Json(coverage_json())
+pub async fn coverage(State(state): State<AppState>) -> Json<Value> {
+    let cascades = state.world().cascade_library().fixture_ids();
+    Json(coverage_json(&cascades))
 }
 
 /// The coverage matrix (shared with `tools/gen-coverage`).
 #[must_use]
-pub fn coverage_json() -> Value {
+pub fn coverage_json(cascades: &[String]) -> Value {
     let resources: Vec<Value> = registry().into_iter().map(resource_entry).collect();
     json!({
         "object": "zebrafish.coverage",
         "stripe_api_version": zebrafish_core::STRIPE_API_VERSION,
         "resources": resources,
-        "cascades": cascade_fixtures(),
+        "cascades": cascades,
     })
 }
 
@@ -64,27 +68,13 @@ fn events_of(res: &'static dyn Resource) -> Vec<&'static str> {
         .collect()
 }
 
-/// Packaged cascade fixture names (spec §7). The directory ships with WS-E;
-/// until then the list is empty.
-fn cascade_fixtures() -> Vec<String> {
-    let Ok(entries) = std::fs::read_dir("fixtures/cascades") else {
-        return Vec::new();
-    };
-    let mut names: Vec<String> = entries
-        .filter_map(std::result::Result::ok)
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .collect();
-    names.sort();
-    names
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn matrix_covers_all_registry_resources() {
-        let matrix = coverage_json();
+        let matrix = coverage_json(&[]);
         let resources = matrix["resources"].as_array().unwrap();
         assert_eq!(resources.len(), registry().len());
         let names: Vec<&str> = resources
@@ -97,7 +87,7 @@ mod tests {
 
     #[test]
     fn read_only_event_resource_has_no_writes() {
-        let matrix = coverage_json();
+        let matrix = coverage_json(&[]);
         let event = matrix["resources"]
             .as_array()
             .unwrap()

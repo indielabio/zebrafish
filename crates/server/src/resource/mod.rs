@@ -116,6 +116,13 @@ pub trait Resource: Send + Sync {
         meta: &RequestMeta,
     ) -> Result<Value, StripeError>;
 
+    /// The cascade trigger that replaces the generic DELETE when a fixture is
+    /// packaged for it (spec §7.1) — subscriptions cancel rather than delete.
+    /// Default: none (plain soft-delete stub).
+    fn delete_trigger(&self) -> Option<&'static str> {
+        None
+    }
+
     /// Resource-specific routes beyond standard CRUD (payment-method
     /// attach/detach). Default: none.
     fn extra_routes(&self) -> Router<AppState> {
@@ -280,17 +287,33 @@ async fn create(
     res.validate_create(&input)?;
     let meta = RequestMeta::from_headers(headers);
     let built = res.default_state(&input, &mut world, &meta)?;
-    let stored = res.insert(&mut world, built)?;
+    let mut out = res.insert(&mut world, built)?;
 
-    if let Some(event_type) = res.crud_events().created {
+    // The base *.created event is owned by CrudEvents; a `crud.*.created`
+    // cascade fixture is additive side-effects on top (spec §7.1). The
+    // has_trigger gate means an empty library draws nothing from the RNG.
+    let crud_trigger = format!("crud.{}.created", res.type_name());
+    let run_cascade = world.cascade_library().has_trigger(&crud_trigger);
+    if res.crud_events().created.is_some() || run_cascade {
         let ctx = RequestCtx {
             request_id: Some(world.new_id("req")),
             idempotency_key: idempotency_key.clone(),
         };
-        world.emit_event(event_type, stored.clone(), None, &ctx)?;
+        if let Some(event_type) = res.crud_events().created {
+            world.emit_event(event_type, out.clone(), None, &ctx)?;
+        }
+        if run_cascade
+            && let Some(outcome) = world.run_trigger(
+                &crud_trigger,
+                json!({ "object": out, "params": input }),
+                &ctx,
+            )?
+            && let Some(updated) = outcome.bindings.get("object")
+        {
+            out = updated.clone();
+        }
     }
 
-    let mut out = stored;
     apply_expand(&mut out, &expand, &world);
     let bytes = serde_json::to_vec(&out).map_err(|e| StripeError::api_error(e.to_string()))?;
 
@@ -356,28 +379,70 @@ async fn update(
 
     let previous = previous_attributes(&prior, &updated);
     let changed = previous.as_object().is_some_and(|m| !m.is_empty());
-    if let (Some(event_type), true) = (res.crud_events().updated, changed) {
+    let crud_trigger = format!("crud.{}.updated", res.type_name());
+    let run_cascade = changed && world.cascade_library().has_trigger(&crud_trigger);
+    let mut out = updated;
+    if (res.crud_events().updated.is_some() && changed) || run_cascade {
         let ctx = RequestCtx {
             request_id: Some(world.new_id("req")),
             idempotency_key,
         };
-        world.emit_event(event_type, updated.clone(), Some(previous), &ctx)?;
+        if let (Some(event_type), true) = (res.crud_events().updated, changed) {
+            world.emit_event(event_type, out.clone(), Some(previous), &ctx)?;
+        }
+        if run_cascade
+            && let Some(outcome) = world.run_trigger(
+                &crud_trigger,
+                json!({ "object": out, "previous": prior, "params": input }),
+                &ctx,
+            )?
+            && let Some(updated) = outcome.bindings.get("object")
+        {
+            out = updated.clone();
+        }
     }
 
-    let mut out = updated;
     apply_expand(&mut out, &expand, &world);
     Ok(Json(out))
 }
 
 /// `DELETE /v1/<plural>/{id}` — delete, returning the deletion stub.
+///
+/// When the resource names a [`Resource::delete_trigger`] *and* a cascade
+/// fixture is packaged for it, the cascade replaces the soft-delete entirely
+/// (a subscription cancels: `status: "canceled"`, still retrievable — Stripe
+/// semantics). With no fixture packaged (pre-WS-E) the stub path runs.
 async fn destroy(res: &'static dyn Resource, state: AppState, id: &str) -> ApiResult<Json<Value>> {
     let mut world = state.world();
     let prior = res
         .fetch(&world, id)?
         .ok_or_else(|| resource_missing(res.type_name(), id))?;
+
+    if let Some(trigger) = res.delete_trigger()
+        && world.cascade_library().has_trigger(trigger)
+    {
+        let ctx = RequestCtx {
+            request_id: Some(world.new_id("req")),
+            idempotency_key: None,
+        };
+        let outcome = world.run_trigger(
+            trigger,
+            json!({ res.type_name(): prior, "params": {} }),
+            &ctx,
+        )?;
+        if outcome.is_some() {
+            let out = res
+                .fetch(&world, id)?
+                .ok_or_else(|| resource_missing(res.type_name(), id))?;
+            return Ok(Json(out));
+        }
+    }
+
     let stub = res.remove(&mut world, id)?;
 
-    if let Some(event_type) = res.crud_events().deleted {
+    let crud_trigger = format!("crud.{}.deleted", res.type_name());
+    let run_cascade = world.cascade_library().has_trigger(&crud_trigger);
+    if res.crud_events().deleted.is_some() || run_cascade {
         // Stripe's *.deleted events snapshot the object with `deleted: true`.
         let mut snapshot = prior;
         snapshot["deleted"] = json!(true);
@@ -385,7 +450,16 @@ async fn destroy(res: &'static dyn Resource, state: AppState, id: &str) -> ApiRe
             request_id: Some(world.new_id("req")),
             idempotency_key: None,
         };
-        world.emit_event(event_type, snapshot, None, &ctx)?;
+        if let Some(event_type) = res.crud_events().deleted {
+            world.emit_event(event_type, snapshot.clone(), None, &ctx)?;
+        }
+        if run_cascade {
+            world.run_trigger(
+                &crud_trigger,
+                json!({ "object": snapshot, "params": {} }),
+                &ctx,
+            )?;
+        }
     }
     Ok(Json(stub))
 }
@@ -402,6 +476,15 @@ async fn list(
     let params = list_params(&query);
     let filters = list_filters(&query);
     let expand = expand_paths(&query);
+    let unknown = unknown_filter_keys(&query);
+    if !unknown.is_empty() {
+        // Spec §5: unknown filters warn (to the operator), never 501.
+        eprintln!(
+            "warning: GET {}: ignoring unsupported filter(s): {}",
+            uri.path(),
+            unknown.join(", "),
+        );
+    }
 
     let world = state.world();
     let items = res.fetch_all(&world)?;
@@ -556,6 +639,31 @@ fn list_filters(query: &Value) -> Filters {
     f
 }
 
+/// Query keys every list endpoint understands (spec §5).
+const KNOWN_LIST_KEYS: &[&str] = &[
+    "limit",
+    "starting_after",
+    "ending_before",
+    "expand",
+    "customer",
+    "status",
+    "created",
+];
+
+/// Query keys a list request carries that no filter understands, sorted.
+fn unknown_filter_keys(query: &Value) -> Vec<String> {
+    let Some(map) = query.as_object() else {
+        return Vec::new();
+    };
+    let mut keys: Vec<String> = map
+        .keys()
+        .filter(|k| !KNOWN_LIST_KEYS.contains(&k.as_str()))
+        .cloned()
+        .collect();
+    keys.sort();
+    keys
+}
+
 /// Stripe update semantics: top-level values replace (coerced toward the prior
 /// value's type, since form leaves are strings); `metadata` merges per key and
 /// an empty-string value deletes the key; `metadata=""` clears it entirely.
@@ -683,6 +791,13 @@ mod tests {
         let mut input = json!({ "name": "Pro", "expand": ["default_price"] });
         assert_eq!(take_expand(&mut input), vec!["default_price".to_string()]);
         assert!(input.get("expand").is_none());
+    }
+
+    #[test]
+    fn unknown_filters_are_reported_sorted() {
+        let q = json!({ "limit": "2", "zeta": "1", "alpha": "x", "created": { "gt": 1 } });
+        assert_eq!(unknown_filter_keys(&q), vec!["alpha", "zeta"]);
+        assert!(unknown_filter_keys(&json!({ "status": "active" })).is_empty());
     }
 
     #[test]

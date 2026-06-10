@@ -7,10 +7,12 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use serde_json::Value;
+use zebrafish_server::cascades::packaged_library;
 use zebrafish_server::config::coverage::coverage_json;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let matrix = coverage_json();
+    let cascades = packaged_library()?.fixture_ids();
+    let matrix = coverage_json(&cascades);
     let markdown = render(&matrix);
 
     // CARGO_MANIFEST_DIR = tools/gen-coverage — the repo root is two up.

@@ -25,6 +25,28 @@ pub fn server() -> TestServer {
     server
 }
 
+/// Like [`server`], but with a cascade library loaded from `dir` (spec §7).
+pub fn server_with_cascades(dir: &std::path::Path) -> TestServer {
+    let mut world = WorldBuilder::new().build_in_memory();
+    world.set_cascade_library(
+        zebrafish_core::cascade::CascadeLibrary::from_dir(dir).expect("load cascade fixtures"),
+    );
+    let mut server = TestServer::new(app(AppState::new(world))).expect("build test server");
+    server.add_header(
+        header::AUTHORIZATION,
+        HeaderValue::from_static("Bearer sk_test_zebrafish"),
+    );
+    server
+}
+
+/// The canonical hand-built WS-D test fixtures (shared with the core tests).
+pub fn core_fixtures_dir() -> &'static std::path::Path {
+    std::path::Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../core/tests/fixtures"
+    ))
+}
+
 /// A server with the clock parked at [`FIXED_CLOCK`] and the RNG restarted
 /// from seed 42, so every response byte is reproducible.
 pub async fn deterministic_server() -> TestServer {

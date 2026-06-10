@@ -1,9 +1,14 @@
-//! `subscription` (spec §1) — object + CRUD only. Renewal/cancellation
-//! cascades driven by the clock are WS-D; here DELETE is the generic deletion
-//! stub until WS-D replaces it with Stripe's cancel semantics.
+//! `subscription` (spec §1, §7) — object + CRUD. Renewals fire from the
+//! clock-advance scheduler; DELETE routes through the `subscription.cancel`
+//! cascade trigger when a fixture is packaged (Stripe's cancel semantics:
+//! `status: "canceled"`, still retrievable) and falls back to the generic
+//! deletion stub until WS-E ships recorded fixtures.
 
 use serde_json::{Value, json};
 use zebrafish_core::World;
+// One source of truth for billing-period lengths: the same table the cascade
+// template language uses for `{{now + price.interval}}` (spec §7).
+use zebrafish_core::cascade::interval_seconds;
 
 use crate::error::StripeError;
 use crate::resource::{
@@ -13,16 +18,6 @@ use crate::resource::{
 /// The `subscription` resource.
 #[derive(Debug)]
 pub struct Subscription;
-
-/// One billing period, in seconds (spec §7: virtual-clock months are 30 days).
-fn interval_seconds(interval: &str) -> i64 {
-    match interval {
-        "day" => 86_400,
-        "week" => 7 * 86_400,
-        "year" => 365 * 86_400,
-        _ => 30 * 86_400, // month
-    }
-}
 
 /// The legacy `plan` view of a price — subscription items carry both.
 fn plan_of(price: &Value) -> Value {
@@ -69,6 +64,10 @@ impl Resource for Subscription {
             updated: Some("customer.subscription.updated"),
             deleted: Some("customer.subscription.deleted"),
         }
+    }
+
+    fn delete_trigger(&self) -> Option<&'static str> {
+        Some("subscription.cancel")
     }
 
     fn validate_create(&self, body: &Value) -> Result<(), StripeError> {

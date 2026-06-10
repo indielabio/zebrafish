@@ -30,6 +30,7 @@ form_urlencoded = "1"
 base64 = "0.22"
 # Idempotency-Key request-body hashing (spec §5).
 sha2 = "0.10"
+include_dir = "0.7"
 
 [dev-dependencies]
 zebrafish-test-support = { workspace = true }

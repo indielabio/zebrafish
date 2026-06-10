@@ -1,0 +1,42 @@
+{
+  "id": "test.subscription.renew",
+  "trigger": "subscription.renew",
+  "when": { "subscription.status": "active" },
+  "recorded": { "source": "hand-built", "stripe_api_version": "2025-12-30" },
+  "steps": [
+    {
+      "op": "create",
+      "type": "invoice",
+      "bind": "invoice",
+      "state": {
+        "id": "{{id:in}}",
+        "object": "invoice",
+        "created": "{{now}}",
+        "customer": "{{subscription.customer}}",
+        "subscription": "{{subscription.id}}",
+        "currency": "{{subscription.currency}}",
+        "amount_due": "{{helpers.subscription_total(subscription)}}",
+        "amount_paid": "{{helpers.subscription_total(subscription)}}",
+        "amount_remaining": 0,
+        "status": "paid",
+        "paid": true,
+        "billing_reason": "subscription_cycle",
+        "period_start": "{{subscription.items.data.0.current_period_start}}",
+        "period_end": "{{subscription.items.data.0.current_period_end}}",
+        "number": "ZF-{{id:invnum}}",
+        "livemode": false,
+        "metadata": {}
+      }
+    },
+    {
+      "op": "update",
+      "object": "subscription",
+      "set": {
+        "items": "{{helpers.renew_item_periods(subscription)}}",
+        "latest_invoice": "{{invoice.id}}"
+      }
+    },
+    { "op": "emit", "event": "invoice.paid", "object": "invoice" },
+    { "op": "emit", "event": "customer.subscription.updated", "object": "subscription" }
+  ]
+}

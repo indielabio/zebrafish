@@ -35,6 +35,10 @@ tokio = { version = "1", features = ["sync"] }
 [dev-dependencies]
 # Temp databases for the restart-determinism integration tests.
 tempfile = "3"
+# Cascade template-language round-trip properties (spec §16.2).
+proptest = "1"
+# Byte-stable snapshots of cascade-emitted events (spec §16.2).
+insta = { version = "1", features = ["json"] }
 
 [lints]
 workspace = true

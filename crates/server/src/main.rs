@@ -30,6 +30,11 @@ struct Cli {
     /// Deterministic seed. Absent: a random seed is chosen, logged, persisted.
     #[arg(long, env = "ZEBRAFISH_SEED")]
     seed: Option<u64>,
+
+    /// Load cascade fixtures from this directory instead of the packaged set
+    /// (fixture development; spec §7).
+    #[arg(long, env = "ZEBRAFISH_CASCADES_DIR")]
+    cascades_dir: Option<std::path::PathBuf>,
 }
 
 #[tokio::main]
@@ -37,10 +42,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     let db = if cli.ephemeral { ":memory:" } else { &cli.db };
-    let world = World::open(db, cli.seed)?;
+    let mut world = World::open(db, cli.seed)?;
+
+    let cascades = zebrafish_server::cascades::load(cli.cascades_dir.as_deref())?;
+    let cascade_count = cascades.fixture_ids().len();
+    world.set_cascade_library(cascades);
 
     eprintln!("{}", banner());
-    eprintln!("seed: {}  db: {db}", world.seed());
+    eprintln!(
+        "seed: {}  db: {db}  cascades: {cascade_count}",
+        world.seed()
+    );
 
     let state = AppState::new(world);
     let listener = tokio::net::TcpListener::bind((cli.host.as_str(), cli.port)).await?;

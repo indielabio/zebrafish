@@ -1,0 +1,106 @@
+---
+source: crates/core/tests/cascade_engine.rs
+expression: payloads
+---
+[
+  {
+    "api_version": "2025-12-30",
+    "created": 1700000000,
+    "data": {
+      "object": {
+        "amount_due": 5800,
+        "amount_paid": 5800,
+        "amount_remaining": 0,
+        "billing_reason": "subscription_cycle",
+        "created": 1700000000,
+        "currency": "usd",
+        "customer": "cus_test",
+        "id": "in_YF37N7WUvbiCNeefwzdONWud",
+        "livemode": false,
+        "metadata": {},
+        "number": "ZF-invnum_Knkc7scXDXOjEFPLtmoCHuAj",
+        "object": "invoice",
+        "paid": true,
+        "period_end": 1700000000,
+        "period_start": 1697408000,
+        "status": "paid",
+        "subscription": "sub_test"
+      }
+    },
+    "id": "evt_kGtKLsYVKPL2PgaVPuPezYl6",
+    "livemode": false,
+    "object": "event",
+    "pending_webhooks": 0,
+    "request": {
+      "id": null,
+      "idempotency_key": null
+    },
+    "type": "invoice.paid"
+  },
+  {
+    "api_version": "2025-12-30",
+    "created": 1700000000,
+    "data": {
+      "object": {
+        "cancel_at_period_end": false,
+        "created": 1700000000,
+        "currency": "usd",
+        "customer": "cus_test",
+        "id": "sub_test",
+        "items": {
+          "data": [
+            {
+              "current_period_end": 1702592000,
+              "current_period_start": 1700000000,
+              "id": "si_test",
+              "object": "subscription_item",
+              "price": {
+                "id": "price_test",
+                "recurring": {
+                  "interval": "month"
+                },
+                "unit_amount": 2900
+              },
+              "quantity": 2
+            }
+          ],
+          "has_more": false,
+          "object": "list"
+        },
+        "latest_invoice": "in_YF37N7WUvbiCNeefwzdONWud",
+        "object": "subscription",
+        "status": "active"
+      },
+      "previous_attributes": {
+        "items": {
+          "data": [
+            {
+              "current_period_end": 1700000000,
+              "current_period_start": 1697408000,
+              "id": "si_test",
+              "object": "subscription_item",
+              "price": {
+                "id": "price_test",
+                "recurring": {
+                  "interval": "month"
+                },
+                "unit_amount": 2900
+              },
+              "quantity": 2
+            }
+          ]
+        },
+        "latest_invoice": null
+      }
+    },
+    "id": "evt_fGHpUAE8LKCLkWzn85zzKH35",
+    "livemode": false,
+    "object": "event",
+    "pending_webhooks": 0,
+    "request": {
+      "id": null,
+      "idempotency_key": null
+    },
+    "type": "customer.subscription.updated"
+  }
+]
