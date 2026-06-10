@@ -1,0 +1,22 @@
+[package]
+name = "gen-coverage"
+description = "Renders docs/COVERAGE.md from the resource registry (spec §12)."
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "gen-coverage"
+path = "src/main.rs"
+
+[dependencies]
+# Explicit version (in lockstep with workspace.package.version) so the path
+# dependency reads as pinned, not wildcard, to cargo-deny.
+zebrafish-server = { path = "../../crates/server", version = "0.0.0" }
+serde_json = "1"
+
+[lints]
+workspace = true

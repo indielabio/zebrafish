@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use crate::bus::Notification;
 use crate::error::{CoreError, Result};
 use crate::event::{EventData, EventRequest, RequestCtx, StripeEvent};
-use crate::store::{StoredObject, put_event, put_object, save_world_row};
+use crate::store::{StoredObject, WebhookEndpointRow, put_event, put_object, save_world_row};
 use crate::world::World;
 
 /// Read the `object` (type) discriminator from an `api_state` JSON value.
@@ -150,5 +150,46 @@ impl World {
 
         self.bus.publish(Notification::EventEmitted(payload));
         Ok(event)
+    }
+
+    /// Persist a webhook endpoint row (spec §8). The row lives in its own table
+    /// — not `objects` — so it survives `flush_data` and the WS-F delivery loop
+    /// can read filters/secrets without JSON queries.
+    pub fn put_webhook_endpoint(&mut self, endpoint: &WebhookEndpointRow) -> Result<()> {
+        let row = self.world_row()?;
+        self.store.transaction(|tx| {
+            crate::store::put_webhook_endpoint(tx, endpoint)?;
+            save_world_row(tx, &row)
+        })?;
+
+        self.bus.publish(Notification::ObjectWritten(json!({
+            "id": endpoint.id,
+            "object": "webhook_endpoint",
+            "url": endpoint.url,
+            "enabled_events": endpoint.events,
+            "created": endpoint.created,
+        })));
+        Ok(())
+    }
+
+    /// Hard-delete a webhook endpoint. Errors with [`CoreError::NotFound`] if
+    /// the id is unknown; returns Stripe's deletion stub otherwise.
+    pub fn delete_webhook_endpoint(&mut self, id: &str) -> Result<Value> {
+        let row = self.world_row()?;
+        let removed = self.store.transaction(|tx| {
+            let removed = crate::store::delete_webhook_endpoint(tx, id)?;
+            save_world_row(tx, &row)?;
+            Ok(removed)
+        })?;
+        if !removed {
+            return Err(CoreError::NotFound {
+                kind: "webhook_endpoint".into(),
+                id: id.into(),
+            });
+        }
+
+        let resp = json!({ "id": id, "object": "webhook_endpoint", "deleted": true });
+        self.bus.publish(Notification::ObjectWritten(resp.clone()));
+        Ok(resp)
     }
 }

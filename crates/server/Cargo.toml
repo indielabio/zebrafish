@@ -36,6 +36,7 @@ zebrafish-test-support = { workspace = true }
 proptest = "1"
 insta = { version = "1", features = ["json"] }
 axum-test = "17"
+jsonschema = { version = "0.46.5", default-features = false, features = ["resolve-file"] }
 
 [lints]
 workspace = true

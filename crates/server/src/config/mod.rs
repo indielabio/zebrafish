@@ -5,6 +5,7 @@
 //! (spec §11).
 
 mod clock;
+pub mod coverage;
 mod reset;
 
 use axum::Router;
@@ -18,6 +19,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/clock", get(clock::get_clock))
         .route("/clock/advance", post(clock::advance_clock))
+        .route("/coverage", get(coverage::coverage))
         .route("/data", delete(reset::flush_data))
         .route("/reset", post(reset::reset))
         .route("/seed-db", post(reset::seed_db))

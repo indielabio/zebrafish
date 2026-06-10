@@ -1,0 +1,50 @@
+---
+source: crates/server/tests/golden_resources.rs
+expression: created
+---
+{
+  "amount": 2900,
+  "amount_capturable": 0,
+  "amount_details": {
+    "tip": {}
+  },
+  "amount_received": 0,
+  "application": null,
+  "application_fee_amount": null,
+  "automatic_payment_methods": null,
+  "canceled_at": null,
+  "cancellation_reason": null,
+  "capture_method": "automatic_async",
+  "client_secret": "pi_YF37N7WUvbiCNeefwzdONWud_secret_Knkc7scXDXOjEFPLtmoCHuAj",
+  "confirmation_method": "automatic",
+  "created": 1700000000,
+  "currency": "usd",
+  "customer": null,
+  "customer_account": null,
+  "description": null,
+  "excluded_payment_method_types": null,
+  "id": "pi_YF37N7WUvbiCNeefwzdONWud",
+  "last_payment_error": null,
+  "latest_charge": null,
+  "livemode": false,
+  "metadata": {},
+  "next_action": null,
+  "object": "payment_intent",
+  "on_behalf_of": null,
+  "payment_method": null,
+  "payment_method_configuration_details": null,
+  "payment_method_options": {},
+  "payment_method_types": [
+    "card"
+  ],
+  "processing": null,
+  "receipt_email": null,
+  "review": null,
+  "setup_future_usage": null,
+  "shipping": null,
+  "source": null,
+  "statement_descriptor": null,
+  "statement_descriptor_suffix": null,
+  "status": "requires_payment_method",
+  "transfer_group": null
+}

@@ -4,3 +4,8 @@
 [default.extend-words]
 # IIN = Issuer Identification Number (the card PAN prefix, spec §6.4).
 iin = "iin"
+
+[files]
+# Golden snapshots and the vendored OpenAPI document are full of random
+# base62 ids that pattern-match as typos.
+extend-exclude = ["crates/server/tests/golden/", "crates/core/openapi/spec3.sdk.json"]

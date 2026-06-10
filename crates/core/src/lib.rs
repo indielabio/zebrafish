@@ -10,6 +10,7 @@
 
 pub mod bus;
 pub mod clock;
+pub mod diff;
 pub mod error;
 pub mod event;
 pub mod faker;
@@ -27,7 +28,8 @@ pub use world::{AdvanceReport, World};
 /// The single Stripe API version this build is pinned to and stamps into every
 /// event's `api_version` field. See spec §3.
 ///
-/// TODO(WS-C): vendor the matching `stripe/openapi` spec at this pin.
+/// The matching `stripe/openapi` document is vendored at `openapi/spec3.sdk.json`
+/// (see `openapi/README.md` for the exact upstream pin).
 pub const STRIPE_API_VERSION: &str = "2025-12-30";
 
 #[cfg(test)]

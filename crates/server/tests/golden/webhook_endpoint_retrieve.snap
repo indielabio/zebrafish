@@ -1,0 +1,19 @@
+---
+source: crates/server/tests/golden_resources.rs
+expression: fetched
+---
+{
+  "api_version": null,
+  "application": null,
+  "created": 1700000000,
+  "description": null,
+  "enabled_events": [
+    "*"
+  ],
+  "id": "we_YF37N7WUvbiCNeefwzdONWud",
+  "livemode": false,
+  "metadata": {},
+  "object": "webhook_endpoint",
+  "status": "enabled",
+  "url": "https://example.com/hooks"
+}
