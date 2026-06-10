@@ -1,0 +1,37 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+default-members = ["crates/server"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.96"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/indielabio/zebrafish"
+homepage = "https://zebrafish.dev"
+authors = ["indielab"]
+
+# Centralized lints. Each crate opts in with `[lints] workspace = true`.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+
+# Shared dependency versions. Crates reference these with `{ workspace = true }`
+# as real implementation lands (WS-A onward).
+[workspace.dependencies]
+# Internal crates carry an explicit version (kept in lockstep with
+# workspace.package.version) so they read as pinned, not wildcard, to cargo-deny.
+zebrafish-core = { path = "crates/core", version = "0.0.0" }
+zebrafish-dashboard = { path = "crates/dashboard", version = "0.0.0" }
+
+# Build all release artifacts (the shipped binary) optimized for size + speed.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

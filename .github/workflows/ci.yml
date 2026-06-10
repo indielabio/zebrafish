@@ -1,0 +1,34 @@
+# Main pipeline. Runs on every PR and on pushes to develop/main.
+#   - PR:       all checks + build the image (no push).
+#   - develop:  all checks + push multi-arch image tagged `preview`.
+#   - main:     all checks + push multi-arch image tagged `edge`.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+# Cancel superseded runs on the same ref to save runner minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: ./.github/workflows/rust-checks.yml
+    secrets: inherit
+
+  image:
+    needs: checks
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/image.yml
+    with:
+      # Push only on branch pushes (develop/main); PRs build to validate only.
+      push: ${{ github.event_name == 'push' }}
+    secrets: inherit

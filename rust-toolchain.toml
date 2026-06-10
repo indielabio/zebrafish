@@ -1,0 +1,6 @@
+# Single source of truth for the toolchain. rustup auto-installs this version
+# and its components on the first `cargo` invocation, including in CI.
+[toolchain]
+channel = "1.96.0"
+components = ["rustfmt", "clippy", "llvm-tools-preview"]
+profile = "minimal"
