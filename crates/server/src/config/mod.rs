@@ -4,9 +4,13 @@
 //! the test harness and dashboard use — there are no privileged endpoints
 //! (spec §11).
 
+mod chaos;
 mod clock;
 pub mod coverage;
+mod deliveries;
+mod events;
 mod reset;
+pub mod webhooks;
 
 use axum::Router;
 use axum::routing::{delete, get, post};
@@ -23,6 +27,15 @@ pub fn router() -> Router<AppState> {
         .route("/data", delete(reset::flush_data))
         .route("/reset", post(reset::reset))
         .route("/seed-db", post(reset::seed_db))
+        .route("/webhooks", post(webhooks::create).get(webhooks::list))
+        .route("/webhooks/{id}", delete(webhooks::delete))
+        .route("/deliveries", get(deliveries::list))
+        .route("/events/{id}/redeliver", post(events::redeliver))
+        .route(
+            "/chaos",
+            post(chaos::create).get(chaos::list).delete(chaos::clear),
+        )
+        .route("/chaos/{id}", delete(chaos::delete))
 }
 
 /// Coerce a JSON value (number or numeric string — the form parser yields

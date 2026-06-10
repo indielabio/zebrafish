@@ -7,6 +7,8 @@
 //! resumes the exact stream position.
 
 mod advance;
+mod chaos;
+mod delivery;
 mod mutate;
 mod trigger;
 
@@ -36,6 +38,11 @@ pub struct World {
     seed: u64,
     api_version: String,
     cascades: Arc<CascadeLibrary>,
+    /// Post-commit event sink: the server's webhook delivery worker (spec §8).
+    /// `None` until the server installs it; committed events are then handed
+    /// over in emission order. The channel is unbounded so a mutation never
+    /// blocks on delivery.
+    sink: Option<tokio::sync::mpsc::UnboundedSender<crate::event::StripeEvent>>,
 }
 
 impl World {
@@ -58,6 +65,7 @@ impl World {
                     seed: row.seed,
                     api_version: row.stripe_api_version,
                     cascades: Arc::new(CascadeLibrary::empty()),
+                    sink: None,
                 })
             }
             None => {
@@ -70,6 +78,7 @@ impl World {
                     seed,
                     api_version: STRIPE_API_VERSION.to_string(),
                     cascades: Arc::new(CascadeLibrary::empty()),
+                    sink: None,
                 };
                 world.persist_world_row()?;
                 Ok(world)
@@ -110,6 +119,33 @@ impl World {
     /// spec §7). The world defaults to an empty library.
     pub fn set_cascade_library(&mut self, library: CascadeLibrary) {
         self.cascades = Arc::new(library);
+    }
+
+    /// Install the post-commit event sink (spec §8): every event is handed to
+    /// it after its transaction commits, in emission order. With no sink (or a
+    /// dropped receiver) events are still persisted — only delivery is off.
+    pub fn set_event_sink(
+        &mut self,
+        sink: tokio::sync::mpsc::UnboundedSender<crate::event::StripeEvent>,
+    ) {
+        self.sink = Some(sink);
+    }
+
+    /// Hand a committed event to the delivery sink, if installed.
+    pub(crate) fn send_to_sink(&self, event: &crate::event::StripeEvent) {
+        if let Some(sink) = &self.sink {
+            let _ = sink.send(event.clone());
+        }
+    }
+
+    /// How many registered endpoints' filters match `event_type` — the event's
+    /// `pending_webhooks` value at emit time (spec §8).
+    pub(crate) fn matching_endpoint_count(&self, event_type: &str) -> Result<i64> {
+        Ok(self
+            .list_webhook_endpoints()?
+            .iter()
+            .filter(|e| crate::event::endpoint_filter_matches(&e.events, event_type))
+            .count() as i64)
     }
 
     /// Handle to the cascade library (Arc-cloned so callers can iterate

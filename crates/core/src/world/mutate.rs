@@ -131,7 +131,9 @@ impl World {
                 previous_attributes: previous,
             },
             livemode: false,
-            pending_webhooks: 0,
+            // The endpoint-match count at emit time (spec §8). Not decremented
+            // as deliveries complete — the stored payload is a snapshot.
+            pending_webhooks: self.matching_endpoint_count(type_)?,
             request: EventRequest {
                 id: ctx.request_id.clone(),
                 idempotency_key: ctx.idempotency_key.clone(),
@@ -149,6 +151,7 @@ impl World {
         })?;
 
         self.bus.publish(Notification::EventEmitted(payload));
+        self.send_to_sink(&event);
         Ok(event)
     }
 

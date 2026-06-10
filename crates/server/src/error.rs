@@ -83,6 +83,39 @@ impl StripeError {
         Self::new(StatusCode::BAD_REQUEST, "idempotency_error", message)
     }
 
+    /// 402 generic card decline, Stripe wording (spec §9 `Zebrafish-Fail`).
+    #[must_use]
+    pub fn card_declined() -> Self {
+        let mut e = Self::new(
+            StatusCode::PAYMENT_REQUIRED,
+            "card_error",
+            "Your card was declined.",
+        );
+        e.code = Some("card_declined".to_string());
+        e.decline_code = Some("generic_decline".to_string());
+        e.doc_url = Some("https://stripe.com/docs/error-codes/card-declined".to_string());
+        e
+    }
+
+    /// 429 rate limited (spec §5 status mapping; produced only by chaos).
+    #[must_use]
+    pub fn rate_limited() -> Self {
+        let mut e = Self::new(
+            StatusCode::TOO_MANY_REQUESTS,
+            "rate_limit_error",
+            "Too many requests hit the API too quickly.",
+        );
+        e.code = Some("rate_limit".to_string());
+        e
+    }
+
+    /// An arbitrary chaos-injected error with an explicit status and type
+    /// (spec §9 Layer 2 `action.error`).
+    #[must_use]
+    pub fn chaos(status: StatusCode, type_: &'static str, message: impl Into<String>) -> Self {
+        Self::new(status, type_, message)
+    }
+
     /// 501 for endpoints zebrafish does not implement yet (spec §1).
     #[must_use]
     pub fn unimplemented(method: &str, path: &str) -> Self {

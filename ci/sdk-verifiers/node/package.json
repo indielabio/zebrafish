@@ -1,0 +1,9 @@
+{
+  "name": "zebrafish-sdk-verify-node",
+  "private": true,
+  "type": "module",
+  "description": "Verifies zebrafish webhook signatures with the real stripe-node SDK (spec §8, §16.3 — release blocker).",
+  "dependencies": {
+    "stripe": "^19"
+  }
+}

@@ -145,8 +145,45 @@ jobs:
           cargo run -p gen-coverage
           git diff --exit-code docs/COVERAGE.md
 
+  # Webhook signatures verified by the REAL Stripe SDK verifiers (spec §8,
+  # §16.3 — release blocker). Each job boots the actual binary, registers an
+  # endpoint, triggers customer.created, and runs the SDK's constructEvent.
+  sdk-verify-node:
+    name: sdk-verify (stripe-node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p zebrafish-server --bin zebrafish --locked
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+        working-directory: ci/sdk-verifiers/node
+      - run: node verify.mjs
+        working-directory: ci/sdk-verifiers/node
+        env:
+          ZEBRAFISH_BIN: ${{ github.workspace }}/target/debug/zebrafish
+
+  sdk-verify-go:
+    name: sdk-verify (stripe-go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p zebrafish-server --bin zebrafish --locked
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: ci/sdk-verifiers/go/go.sum
+      - run: go run .
+        working-directory: ci/sdk-verifiers/go
+        env:
+          ZEBRAFISH_BIN: ${{ github.workspace }}/target/debug/zebrafish
+
   # TODO(WS-I): conformance vs emulator (hermetic) — required for merge once the
   #   harness exists. See conformance/.
-  # TODO(WS-F): stripe-go + stripe-node signature-verifier jobs.
   # TODO(WS-G): Playwright checkout E2E (chromium).
   # TODO(WS-D/J): fixture-schema validation.

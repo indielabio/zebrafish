@@ -19,9 +19,18 @@ zebrafish-core = { workspace = true }
 zebrafish-dashboard = { workspace = true }
 
 axum = "0.8"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
 serde_json = "1"
 clap = { version = "4", features = ["derive", "env"] }
+
+# Webhook delivery HTTP client (spec §8). No default features: deliveries go
+# to local app endpoints over plain http; a TLS stack would bloat the <15 MB
+# binary for a URL shape this local tool explicitly discourages. https
+# endpoints record a connection-failure delivery rather than being silently
+# ignored.
+reqwest = { version = "0.12", default-features = false }
+# Webhook signing: HMAC-SHA256 over "{t}.{raw_body}" (spec §8).
+hmac = "0.12"
 
 # Nested x-www-form-urlencoded splitting + percent/plus decoding (the `url`
 # project's pair parser); the nesting logic on top is ours (spec §5).

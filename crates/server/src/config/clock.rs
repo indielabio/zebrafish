@@ -46,6 +46,11 @@ pub async fn advance_clock(
         world.advance_to(target)?
     };
 
+    // Spec §8 (virtual-time-aware retries): webhook retries that became due
+    // during the walk fire before the advance returns. The world lock is
+    // already released — the worker takes it per attempt.
+    state.delivery.drain().await;
+
     Ok(Json(json!({
         "now": report.now,
         "events_emitted": report.events_emitted,

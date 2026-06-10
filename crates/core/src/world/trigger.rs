@@ -119,6 +119,7 @@ impl World {
 
         let now = self.now();
         let api_version = self.api_version().to_string();
+        let endpoints = self.list_webhook_endpoints()?;
         let mut pre_images: BTreeMap<String, Value> = BTreeMap::new();
         let mut writes: Vec<Write> = Vec::new();
         let mut events: Vec<StripeEvent> = Vec::new();
@@ -234,7 +235,11 @@ impl World {
                             previous_attributes: previous,
                         },
                         livemode: false,
-                        pending_webhooks: 0,
+                        // Endpoint-match count at emit time (spec §8).
+                        pending_webhooks: endpoints
+                            .iter()
+                            .filter(|e| crate::event::endpoint_filter_matches(&e.events, event))
+                            .count() as i64,
                         request: EventRequest {
                             id: req.request_id.clone(),
                             idempotency_key: req.idempotency_key.clone(),
@@ -280,6 +285,10 @@ impl World {
                     .bus
                     .publish(Notification::EventEmitted(payload.clone())),
             }
+        }
+        // Delivery sink only after commit, in emission order (spec §8).
+        for event in &events {
+            self.send_to_sink(event);
         }
 
         Ok(Some(CascadeOutcome {

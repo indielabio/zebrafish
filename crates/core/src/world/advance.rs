@@ -49,7 +49,7 @@ impl World {
                 if due.at > self.now() {
                     self.set_clock(due.at)?;
                 }
-                let ctx = json!({ "subscription": due.subscription });
+                let ctx = self.lifecycle_context(due.trigger, due.subscription)?;
                 // Scheduler-fired events carry no originating request (spec §8).
                 match self.run_trigger(due.trigger, ctx, &RequestCtx::default())? {
                     Some(outcome) => {
@@ -83,6 +83,33 @@ impl World {
             now: self.now(),
             events_emitted,
         })
+    }
+
+    /// Build the trigger context for a scheduled lifecycle moment. Renewals
+    /// resolve the default payment method's card outcome (spec §9: one
+    /// `card_outcome` for checkout, scheduler, and `when` clauses) — from the
+    /// stored `last4`, since PANs are never persisted (spec §15) — and carry
+    /// the payment method so fixtures can reference it.
+    fn lifecycle_context(&self, trigger: &str, subscription: Value) -> Result<Value> {
+        let mut ctx = json!({ "subscription": subscription });
+        if trigger == "subscription.renew" {
+            let pm = ctx["subscription"]
+                .get("default_payment_method")
+                .and_then(Value::as_str)
+                .and_then(|id| self.get_live_object(id).ok().flatten());
+            let last4 = pm
+                .as_ref()
+                .and_then(|p| p.pointer("/card/last4"))
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let outcome =
+                crate::cards::outcome_from_last4(last4, crate::cards::ChargeContext::OffSession);
+            ctx["card"] = outcome.to_context();
+            if let Some(pm) = pm {
+                ctx["payment_method"] = pm;
+            }
+        }
+        Ok(ctx)
     }
 
     /// The earliest scheduled renewal/cancellation at or before `target`

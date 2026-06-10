@@ -41,3 +41,24 @@ pub fn wall_clock_now() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
+
+/// Wall-clock stopwatch for measuring *durations* (a webhook delivery
+/// attempt's `duration_ms`, spec §4) — never for reading time-of-day, which
+/// stays the virtual clock's job. Lives here because `core::clock` is the one
+/// module allowed to touch monotonic time (`ci/guardrails.sh`).
+#[derive(Debug, Clone, Copy)]
+pub struct WallStopwatch(std::time::Instant);
+
+impl WallStopwatch {
+    /// Start measuring.
+    #[must_use]
+    pub fn start() -> Self {
+        Self(std::time::Instant::now())
+    }
+
+    /// Milliseconds elapsed since [`WallStopwatch::start`].
+    #[must_use]
+    pub fn elapsed_ms(&self) -> i64 {
+        i64::try_from(self.0.elapsed().as_millis()).unwrap_or(i64::MAX)
+    }
+}

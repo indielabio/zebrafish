@@ -2,8 +2,9 @@
 //!
 //! Hosts the axum HTTP API, the Stripe form-encoding parser, the error model,
 //! the auth shim, response headers, idempotency, list/expand plumbing, the v1
-//! [`resource`] registry, and the `/_config` control plane (spec §5, §6.2, §9,
-//! §12). Cascades, webhooks, checkout, and chaos land in later workstreams.
+//! [`resource`] registry, the `/_config` control plane, signed [`webhooks`]
+//! delivery, and the [`chaos`] engine (spec §5, §6.2, §8, §9, §12). The
+//! checkout page lands with WS-G.
 
 // Stripe objects are wide: the bigger `json!` literals in `resources/` blow
 // the default macro recursion limit.
@@ -11,6 +12,7 @@
 
 pub mod auth;
 pub mod cascades;
+pub mod chaos;
 pub mod config;
 pub mod error;
 pub mod expand;
@@ -21,6 +23,7 @@ pub mod pagination;
 pub mod resource;
 pub mod resources;
 pub mod state;
+pub mod webhooks;
 
 use axum::Router;
 use axum::extract::OriginalUri;
@@ -42,8 +45,14 @@ pub use zebrafish_dashboard;
 /// unimplemented long tail; `/_config/*` is the local control plane. Every
 /// response is stamped with the `Stripe-Version` and `Zebrafish-Seed` headers.
 pub fn app(state: AppState) -> Router {
+    // Layer order is outside-in: auth runs first, then chaos (an injected
+    // failure still requires valid-shaped credentials), then the handler.
     let v1 = resource::mount(Router::new(), &resource::registry())
         .fallback(unimplemented)
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            chaos::apply_chaos,
+        ))
         .layer(middleware::from_fn(require_auth));
 
     Router::new()

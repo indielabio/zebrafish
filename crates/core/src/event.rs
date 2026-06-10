@@ -58,3 +58,51 @@ pub struct RequestCtx {
     /// The originating `Idempotency-Key`.
     pub idempotency_key: Option<String>,
 }
+
+/// Whether a webhook endpoint's `events` filter list matches an event type
+/// (spec §8): `"*"` matches everything, otherwise exact match or a trailing
+/// `.*` prefix wildcard (`"customer.*"` matches `customer.created`).
+#[must_use]
+pub fn endpoint_filter_matches(filters: &[String], event_type: &str) -> bool {
+    filters.iter().any(|f| {
+        f == "*"
+            || f == event_type
+            || f.strip_suffix(".*").is_some_and(|prefix| {
+                event_type
+                    .strip_prefix(prefix)
+                    .is_some_and(|rest| rest.starts_with('.'))
+            })
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fs(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    #[test]
+    fn filter_matching() {
+        assert!(endpoint_filter_matches(&fs(&["*"]), "invoice.paid"));
+        assert!(endpoint_filter_matches(
+            &fs(&["invoice.paid"]),
+            "invoice.paid"
+        ));
+        assert!(endpoint_filter_matches(
+            &fs(&["customer.*"]),
+            "customer.created"
+        ));
+        assert!(endpoint_filter_matches(
+            &fs(&["customer.*"]),
+            "customer.subscription.created"
+        ));
+        assert!(!endpoint_filter_matches(&fs(&["customer.*"]), "customers"));
+        assert!(!endpoint_filter_matches(
+            &fs(&["invoice.paid"]),
+            "invoice.created"
+        ));
+        assert!(!endpoint_filter_matches(&fs(&[]), "invoice.paid"));
+    }
+}
