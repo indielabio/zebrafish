@@ -1,8 +1,15 @@
 //! Shared test harness for zebrafish (dev-dependency only).
 //!
-//! WS-A/WS-B provide [`WorldBuilder`], an in-process factory for seeded
-//! [`World`]s. The out-of-process `Zebrafish::spawn` spawner and
-//! `CaptureServer` land with the full harness in WS-K (#103).
+//! [`WorldBuilder`] is the in-process factory for seeded [`World`]s (WS-A/B).
+//! [`CaptureServer`] (a real webhook receiver with `expect_events`) and the
+//! out-of-process [`Zebrafish`] binary spawner landed with WS-F; the remaining
+//! WS-K harness work (#103) builds on these.
+
+pub mod capture;
+pub mod spawn;
+
+pub use capture::{CaptureServer, CapturedDelivery};
+pub use spawn::{TEST_API_KEY, Zebrafish, ZebrafishBuilder};
 
 use tempfile::TempDir;
 use zebrafish_core::World;

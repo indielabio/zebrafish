@@ -15,5 +15,21 @@ name = "zebrafish_test_support"
 zebrafish-core = { workspace = true }
 tempfile = "3"
 
+# The out-of-process harness (spec §16.4): CaptureServer is a real axum
+# listener; the spawner drives the real binary over HTTP. This crate is only
+# ever a dev-dependency, so none of this reaches the shipped binary.
+axum = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+serde_json = "1"
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "net",
+    "io-util",
+    "process",
+    "sync",
+    "time",
+] }
+
 [lints]
 workspace = true
