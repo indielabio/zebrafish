@@ -10,5 +10,31 @@ repository.workspace = true
 [lib]
 name = "zebrafish_core"
 
+[dependencies]
+# SQLite blob store. `bundled` vendors SQLite so the build is hermetic and the
+# binary is self-contained; WAL is set at runtime via PRAGMA (spec §4).
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Deterministic randomness. The triple rand 0.9 / rand_chacha 0.9 / fake 4 is
+# kept in lockstep: fake 5 pulls rand 0.10, which would put two incompatible
+# `RngCore` traits in the graph (spec §6.4). The `serde` feature on rand_chacha
+# is REQUIRED — it derives Serialize/Deserialize so the RNG stream position
+# survives a restart via `world.rng_state` (spec §4, §6.4).
+rand = "0.9"
+rand_chacha = { version = "0.9", features = ["serde"] }
+fake = { version = "4", features = ["derive"] }
+
+serde = { version = "1", features = ["derive"] }
+# Also encodes the `rng_state` BLOB (as JSON bytes) — no extra dep needed.
+serde_json = "1"
+
+# Broadcast channel ONLY (no runtime, no net) so `core` stays HTTP-free while
+# still handing the async server/dashboard a subscribable notification bus.
+tokio = { version = "1", features = ["sync"] }
+
+[dev-dependencies]
+# Temp databases for the restart-determinism integration tests.
+tempfile = "3"
+
 [lints]
 workspace = true

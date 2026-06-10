@@ -1,0 +1,6 @@
+# crate-ci/typos configuration.
+# Domain terms that look like typos but are intentional.
+
+[default.extend-words]
+# IIN = Issuer Identification Number (the card PAN prefix, spec §6.4).
+iin = "iin"

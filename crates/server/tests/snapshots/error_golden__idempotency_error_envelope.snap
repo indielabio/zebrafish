@@ -1,0 +1,12 @@
+---
+source: crates/server/tests/error_golden.rs
+expression: "StripeError::idempotency(\"Keys for idempotent requests can only be used with the same parameters.\").to_json()"
+---
+{
+  "error": {
+    "code": null,
+    "message": "Keys for idempotent requests can only be used with the same parameters.",
+    "param": null,
+    "type": "idempotency_error"
+  }
+}

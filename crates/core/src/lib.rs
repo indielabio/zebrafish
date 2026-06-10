@@ -1,15 +1,33 @@
 //! Core domain model for zebrafish.
 //!
-//! This crate owns the `World`, virtual clock, seeded RNG, ID generation,
-//! faker, cascade engine, and event model. It has **no** HTTP dependencies so
-//! it can be exercised without a running server.
+//! This crate owns the [`World`], virtual clock, seeded RNG, ID generation,
+//! [`faker`], event model, and notification [`bus`]. It has **no** HTTP
+//! dependencies so it can be exercised without a running server (spec §2).
 //!
-//! This is a skeleton; real implementation lands with WS-A.
+//! The load-bearing invariant is determinism: the same seed plus the same
+//! sequence of operations yields byte-identical `api_state`, including across a
+//! process restart (the RNG stream position is persisted in `world.rng_state`).
+
+pub mod bus;
+pub mod clock;
+pub mod error;
+pub mod event;
+pub mod faker;
+pub mod id;
+pub mod rng;
+pub mod store;
+pub mod world;
+
+pub use bus::{Notification, NotificationBus};
+pub use error::{CoreError, Result};
+pub use event::{EventData, EventRequest, RequestCtx, StripeEvent};
+pub use rng::WorldRng;
+pub use world::{AdvanceReport, World};
 
 /// The single Stripe API version this build is pinned to and stamps into every
 /// event's `api_version` field. See spec §3.
 ///
-/// TODO(WS-A): vendor the matching `stripe/openapi` spec at this pin.
+/// TODO(WS-C): vendor the matching `stripe/openapi` spec at this pin.
 pub const STRIPE_API_VERSION: &str = "2025-12-30";
 
 #[cfg(test)]

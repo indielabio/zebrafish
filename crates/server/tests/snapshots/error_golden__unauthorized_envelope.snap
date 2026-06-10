@@ -1,0 +1,12 @@
+---
+source: crates/server/tests/error_golden.rs
+expression: "StripeError::unauthorized().to_json()"
+---
+{
+  "error": {
+    "code": null,
+    "message": "You did not provide an API key. You need to provide your API key in the Authorization header, using Bearer auth (e.g. 'Authorization: Bearer sk_test_...').",
+    "param": null,
+    "type": "invalid_request_error"
+  }
+}

@@ -1,0 +1,12 @@
+---
+source: crates/server/tests/error_golden.rs
+expression: "StripeError::api_error(\"Internal error\").to_json()"
+---
+{
+  "error": {
+    "code": null,
+    "message": "Internal error",
+    "param": null,
+    "type": "api_error"
+  }
+}

@@ -9,6 +9,7 @@ Exercise your *whole* subscription flow — hosted checkout, renewals, payment f
 cancellation — and receive **real, signed webhooks** at a local endpoint. No network calls to
 Stripe. No Stripe credentials. No flakiness.
 
+[![website](https://img.shields.io/badge/docs%20%26%20website-zebrafish-06b6d4?logo=github&logoColor=white)](https://indielabio.github.io/zebrafish-site/)
 [![CI](https://img.shields.io/badge/CI-pending-lightgrey)](https://github.com/indielabio/zebrafish/actions)
 [![conformance](https://img.shields.io/badge/conformance-stripe--api%20pending-lightgrey)](https://github.com/indielabio/zebrafish)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE-MIT)
@@ -16,7 +17,7 @@ Stripe. No Stripe credentials. No flakiness.
 [![image](https://img.shields.io/badge/ghcr.io-indielabio%2Fzebrafish-2496ED?logo=docker&logoColor=white)](https://github.com/indielabio/zebrafish/pkgs/container/zebrafish)
 ![local-only](https://img.shields.io/badge/scope-local%20dev%20tool-success)
 
-[Quickstart](#-quickstart) · [Why zebrafish](#-why-zebrafish) · [Using it](#-using-it) · [How it works](#-how-it-works) · [Contributing](#-contributing)
+[Website & docs](https://indielabio.github.io/zebrafish-site/) · [Quickstart](#-quickstart) · [Why zebrafish](#-why-zebrafish) · [Using it](#-using-it) · [How it works](#-how-it-works) · [Contributing](#-contributing)
 
 </div>
 
@@ -191,7 +192,7 @@ privileged endpoints.
 Each `zebrafish` release pins **one** Stripe API version and stamps it into every event's
 `api_version`. The README badge will state the verified version once nightly conformance is live.
 Deeper docs (architecture, fixture format, recording pipeline) live in
-[`docs/`](./docs) and on the docs site (in progress).
+[`docs/`](./docs) and on the [website](https://indielabio.github.io/zebrafish-site/).
 
 ---
 
