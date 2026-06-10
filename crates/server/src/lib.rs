@@ -1,9 +1,13 @@
 //! Stripe-compatible local payment emulator — server crate.
 //!
 //! Hosts the axum HTTP API, the Stripe form-encoding parser, the error model,
-//! the auth shim, response headers, idempotency, list/expand plumbing, and the
-//! `/_config` control plane (spec §5, §6.2, §9). Resources, cascades, webhooks,
-//! checkout, and chaos land in later workstreams.
+//! the auth shim, response headers, idempotency, list/expand plumbing, the v1
+//! [`resource`] registry, and the `/_config` control plane (spec §5, §6.2, §9,
+//! §12). Cascades, webhooks, checkout, and chaos land in later workstreams.
+
+// Stripe objects are wide: the bigger `json!` literals in `resources/` blow
+// the default macro recursion limit.
+#![recursion_limit = "256"]
 
 pub mod auth;
 pub mod config;
@@ -13,6 +17,8 @@ pub mod form;
 pub mod headers;
 pub mod idempotency;
 pub mod pagination;
+pub mod resource;
+pub mod resources;
 pub mod state;
 
 use axum::Router;
@@ -30,11 +36,12 @@ pub use zebrafish_dashboard;
 
 /// Build the application router.
 ///
-/// `/v1/*` is guarded by the auth shim and falls back to the 501 envelope for
-/// unimplemented paths; `/_config/*` is the local control plane. Every response
-/// is stamped with the `Stripe-Version` and `Zebrafish-Seed` headers.
+/// `/v1/*` mounts every registry resource (standard CRUD + extra routes),
+/// guarded by the auth shim and falling back to the 501 envelope for the
+/// unimplemented long tail; `/_config/*` is the local control plane. Every
+/// response is stamped with the `Stripe-Version` and `Zebrafish-Seed` headers.
 pub fn app(state: AppState) -> Router {
-    let v1 = Router::new()
+    let v1 = resource::mount(Router::new(), &resource::registry())
         .fallback(unimplemented)
         .layer(middleware::from_fn(require_auth));
 
