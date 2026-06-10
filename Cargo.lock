@@ -1594,7 +1594,6 @@ dependencies = [
  "form_urlencoded",
  "insta",
  "proptest",
- "serde",
  "serde_json",
  "sha2",
  "tokio",
