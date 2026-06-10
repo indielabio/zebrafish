@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS webhook_endpoints (
   id         TEXT PRIMARY KEY,        -- "we_..."
   url        TEXT NOT NULL,
   secret     TEXT NOT NULL,           -- "whsec_..."
-  events     TEXT NOT NULL DEFAULT '["*"]'  -- JSON array of type filters
+  events     TEXT NOT NULL DEFAULT '["*"]',  -- JSON array of type filters
+  created    INTEGER NOT NULL DEFAULT 0     -- virtual-clock unix seconds
 );
 
 CREATE TABLE IF NOT EXISTS deliveries (

@@ -17,7 +17,7 @@ use crate::bus::{Notification, NotificationBus};
 use crate::clock::{VirtualClock, wall_clock_now};
 use crate::error::Result;
 use crate::rng::WorldRng;
-use crate::store::{Store, WorldRow, load_world_row, save_world_row};
+use crate::store::{Store, WebhookEndpointRow, WorldRow, load_world_row, save_world_row};
 use crate::{STRIPE_API_VERSION, faker, id};
 
 /// The world: store + virtual clock + seeded RNG + notification bus.
@@ -112,6 +112,16 @@ impl World {
         self.store.read(|c| crate::store::get_object(c, id))
     }
 
+    /// Read a *non-deleted* object's `api_state`. A soft-deleted object reads
+    /// as `None`, so resource retrieval and `expand[]` never resurrect it.
+    pub fn get_live_object(&self, id: &str) -> Result<Option<serde_json::Value>> {
+        Ok(self
+            .store
+            .read(|c| crate::store::get(c, id))?
+            .filter(|o| !o.deleted)
+            .map(|o| o.api_state))
+    }
+
     /// List non-deleted objects of a type, newest first.
     pub fn list_objects(&self, type_: &str) -> Result<Vec<serde_json::Value>> {
         self.store.read(|c| crate::store::query_by_type(c, type_))
@@ -126,6 +136,22 @@ impl World {
     /// Read an event payload by id.
     pub fn get_event(&self, id: &str) -> Result<Option<serde_json::Value>> {
         self.store.read(|c| crate::store::get_event(c, id))
+    }
+
+    /// All event payloads, newest first (for `GET /v1/events`).
+    pub fn list_events(&self) -> Result<Vec<serde_json::Value>> {
+        self.store.read(crate::store::list_events)
+    }
+
+    /// Read a webhook endpoint row by id.
+    pub fn get_webhook_endpoint(&self, id: &str) -> Result<Option<WebhookEndpointRow>> {
+        self.store
+            .read(|c| crate::store::get_webhook_endpoint(c, id))
+    }
+
+    /// All webhook endpoint rows, newest first.
+    pub fn list_webhook_endpoints(&self) -> Result<Vec<WebhookEndpointRow>> {
+        self.store.read(crate::store::list_webhook_endpoints)
     }
 
     /// Flush all object/event/delivery/chaos state, keeping seed + clock + RNG

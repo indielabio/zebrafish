@@ -30,6 +30,21 @@ pub struct StoredObject {
     pub deleted: bool,
 }
 
+/// A row of the `webhook_endpoints` table (spec §8). Survives `flush_data`.
+#[derive(Debug, Clone)]
+pub struct WebhookEndpointRow {
+    /// The endpoint id (`we_...`).
+    pub id: String,
+    /// Destination URL.
+    pub url: String,
+    /// Signing secret (`whsec_...`).
+    pub secret: String,
+    /// Event-type filters (`["*"]` matches everything).
+    pub events: Vec<String>,
+    /// Virtual-clock creation time, unix seconds.
+    pub created: i64,
+}
+
 /// The single `world` row: virtual clock, seed, and serialized RNG state.
 #[derive(Debug, Clone)]
 pub struct WorldRow {
@@ -212,6 +227,89 @@ pub fn get_event(conn: &Connection, id: &str) -> Result<Option<Value>> {
         None => Ok(None),
         Some(s) => Ok(Some(serde_json::from_str(&s)?)),
     }
+}
+
+/// All event payloads, newest first (created desc, id desc).
+pub fn list_events(conn: &Connection) -> Result<Vec<Value>> {
+    let mut stmt = conn.prepare("SELECT payload FROM events ORDER BY created DESC, id DESC")?;
+    let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+    let mut out = Vec::new();
+    for raw in rows {
+        out.push(serde_json::from_str(&raw?)?);
+    }
+    Ok(out)
+}
+
+// --- webhook endpoint helpers --------------------------------------------------
+
+/// Insert or replace a webhook endpoint row.
+pub fn put_webhook_endpoint(conn: &Connection, row: &WebhookEndpointRow) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO webhook_endpoints (id, url, secret, events, created)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![
+            row.id,
+            row.url,
+            row.secret,
+            serde_json::to_string(&row.events)?,
+            row.created,
+        ],
+    )?;
+    Ok(())
+}
+
+fn webhook_endpoint_from_row(
+    r: &rusqlite::Row<'_>,
+) -> rusqlite::Result<(String, String, String, String, i64)> {
+    Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
+}
+
+/// Fetch a webhook endpoint row by id.
+pub fn get_webhook_endpoint(conn: &Connection, id: &str) -> Result<Option<WebhookEndpointRow>> {
+    let row = conn
+        .query_row(
+            "SELECT id, url, secret, events, created FROM webhook_endpoints WHERE id = ?1",
+            params![id],
+            webhook_endpoint_from_row,
+        )
+        .optional()?;
+    match row {
+        None => Ok(None),
+        Some((id, url, secret, events, created)) => Ok(Some(WebhookEndpointRow {
+            id,
+            url,
+            secret,
+            events: serde_json::from_str(&events)?,
+            created,
+        })),
+    }
+}
+
+/// All webhook endpoint rows, newest first (created desc, id desc).
+pub fn list_webhook_endpoints(conn: &Connection) -> Result<Vec<WebhookEndpointRow>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, url, secret, events, created FROM webhook_endpoints
+         ORDER BY created DESC, id DESC",
+    )?;
+    let rows = stmt.query_map([], webhook_endpoint_from_row)?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (id, url, secret, events, created) = row?;
+        out.push(WebhookEndpointRow {
+            id,
+            url,
+            secret,
+            events: serde_json::from_str(&events)?,
+            created,
+        });
+    }
+    Ok(out)
+}
+
+/// Hard-delete a webhook endpoint row. Returns whether a row was removed.
+pub fn delete_webhook_endpoint(conn: &Connection, id: &str) -> Result<bool> {
+    let n = conn.execute("DELETE FROM webhook_endpoints WHERE id = ?1", params![id])?;
+    Ok(n > 0)
 }
 
 // --- world row helpers -------------------------------------------------------
