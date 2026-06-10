@@ -1,0 +1,40 @@
+---
+source: crates/server/tests/golden_resources.rs
+expression: fetched
+---
+{
+  "address": {
+    "city": "Stehr ville",
+    "country": "US",
+    "line1": "7730 Glover Mountains",
+    "line2": null,
+    "postal_code": "9004",
+    "state": "MO"
+  },
+  "balance": 0,
+  "created": 1700000000,
+  "currency": null,
+  "default_source": null,
+  "delinquent": false,
+  "description": null,
+  "discount": null,
+  "email": "v.weimann@example.net",
+  "id": "cus_YF37N7WUvbiCNeefwzdONWud",
+  "invoice_prefix": "HUAJKGTK",
+  "invoice_settings": {
+    "custom_fields": null,
+    "default_payment_method": null,
+    "footer": null,
+    "rendering_options": null
+  },
+  "livemode": false,
+  "metadata": {},
+  "name": "Virginia Weimann",
+  "next_invoice_sequence": 1,
+  "object": "customer",
+  "phone": null,
+  "preferred_locales": [],
+  "shipping": null,
+  "tax_exempt": "none",
+  "test_clock": null
+}

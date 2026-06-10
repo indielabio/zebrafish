@@ -1,0 +1,20 @@
+---
+source: crates/server/tests/golden_resources.rs
+expression: created
+---
+{
+  "api_version": null,
+  "application": null,
+  "created": 1700000000,
+  "description": null,
+  "enabled_events": [
+    "*"
+  ],
+  "id": "we_YF37N7WUvbiCNeefwzdONWud",
+  "livemode": false,
+  "metadata": {},
+  "object": "webhook_endpoint",
+  "secret": "whsec_Knkc7scXDXOjEFPLtmoCHuAjkGtKLsYV",
+  "status": "enabled",
+  "url": "https://example.com/hooks"
+}
