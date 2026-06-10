@@ -8,19 +8,25 @@
 
 mod advance;
 mod mutate;
+mod trigger;
 
 pub use advance::AdvanceReport;
+pub use trigger::CascadeOutcome;
+
+use std::sync::Arc;
 
 use tokio::sync::broadcast;
 
 use crate::bus::{Notification, NotificationBus};
+use crate::cascade::CascadeLibrary;
 use crate::clock::{VirtualClock, wall_clock_now};
 use crate::error::Result;
 use crate::rng::WorldRng;
 use crate::store::{Store, WebhookEndpointRow, WorldRow, load_world_row, save_world_row};
 use crate::{STRIPE_API_VERSION, faker, id};
 
-/// The world: store + virtual clock + seeded RNG + notification bus.
+/// The world: store + virtual clock + seeded RNG + notification bus + the
+/// cascade library (empty until the server loads fixtures, spec §7).
 #[derive(Debug)]
 pub struct World {
     store: Store,
@@ -29,6 +35,7 @@ pub struct World {
     bus: NotificationBus,
     seed: u64,
     api_version: String,
+    cascades: Arc<CascadeLibrary>,
 }
 
 impl World {
@@ -50,6 +57,7 @@ impl World {
                     bus: NotificationBus::new(),
                     seed: row.seed,
                     api_version: row.stripe_api_version,
+                    cascades: Arc::new(CascadeLibrary::empty()),
                 })
             }
             None => {
@@ -61,6 +69,7 @@ impl World {
                     bus: NotificationBus::new(),
                     seed,
                     api_version: STRIPE_API_VERSION.to_string(),
+                    cascades: Arc::new(CascadeLibrary::empty()),
                 };
                 world.persist_world_row()?;
                 Ok(world)
@@ -95,6 +104,19 @@ impl World {
     /// Borrow the RNG so resource/faker code can draw deterministic data.
     pub fn rng(&mut self) -> &mut WorldRng {
         &mut self.rng
+    }
+
+    /// Install the cascade library (the server loads fixtures at boot,
+    /// spec §7). The world defaults to an empty library.
+    pub fn set_cascade_library(&mut self, library: CascadeLibrary) {
+        self.cascades = Arc::new(library);
+    }
+
+    /// Handle to the cascade library (Arc-cloned so callers can iterate
+    /// fixtures while mutating the world).
+    #[must_use]
+    pub fn cascade_library(&self) -> Arc<CascadeLibrary> {
+        Arc::clone(&self.cascades)
     }
 
     /// Generate a fresh id with the given prefix, advancing the RNG.

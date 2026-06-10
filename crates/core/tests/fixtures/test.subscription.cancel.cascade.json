@@ -1,0 +1,18 @@
+{
+  "id": "test.subscription.cancel",
+  "trigger": "subscription.cancel",
+  "recorded": { "source": "hand-built", "stripe_api_version": "2025-12-30" },
+  "steps": [
+    {
+      "op": "update",
+      "object": "subscription",
+      "set": {
+        "status": "canceled",
+        "canceled_at": "{{now}}",
+        "ended_at": "{{now}}",
+        "cancel_at_period_end": false
+      }
+    },
+    { "op": "emit", "event": "customer.subscription.deleted", "object": "subscription" }
+  ]
+}

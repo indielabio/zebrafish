@@ -1,0 +1,8 @@
+{
+  "id": "test.renew.ambiguous_a",
+  "trigger": "subscription.renew",
+  "recorded": { "source": "hand-built", "stripe_api_version": "2025-12-30" },
+  "steps": [
+    { "op": "emit", "event": "invoice.paid", "object": "subscription" }
+  ]
+}

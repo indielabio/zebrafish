@@ -23,6 +23,18 @@ pub enum CoreError {
     },
     /// A precondition on the world state was violated.
     Conflict(String),
+    /// A trigger had registered fixtures but `when` resolution matched zero
+    /// or more than one of them — a fixture-packaging bug (spec §7.2).
+    CascadeSelection {
+        /// The trigger that fired, e.g. `"subscription.renew"`.
+        trigger: String,
+        /// Ids of the fixtures whose `when` clauses matched.
+        matched: Vec<String>,
+        /// Ids of every fixture registered for the trigger.
+        candidates: Vec<String>,
+    },
+    /// A cascade fixture failed to load, render, or apply.
+    Cascade(String),
 }
 
 impl fmt::Display for CoreError {
@@ -32,6 +44,19 @@ impl fmt::Display for CoreError {
             Self::Json(e) => write!(f, "json error: {e}"),
             Self::NotFound { kind, id } => write!(f, "no such {kind}: '{id}'"),
             Self::Conflict(msg) => write!(f, "conflict: {msg}"),
+            Self::CascadeSelection {
+                trigger,
+                matched,
+                candidates,
+            } => write!(
+                f,
+                "cascade selection for trigger '{trigger}' matched {} fixture(s) \
+                 [{}] out of candidates [{}]; exactly one must match",
+                matched.len(),
+                matched.join(", "),
+                candidates.join(", "),
+            ),
+            Self::Cascade(msg) => write!(f, "cascade error: {msg}"),
         }
     }
 }
@@ -41,7 +66,10 @@ impl std::error::Error for CoreError {
         match self {
             Self::Sqlite(e) => Some(e),
             Self::Json(e) => Some(e),
-            Self::NotFound { .. } | Self::Conflict(_) => None,
+            Self::NotFound { .. }
+            | Self::Conflict(_)
+            | Self::CascadeSelection { .. }
+            | Self::Cascade(_) => None,
         }
     }
 }

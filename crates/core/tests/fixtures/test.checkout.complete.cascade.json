@@ -1,0 +1,34 @@
+{
+  "id": "test.checkout.complete",
+  "trigger": "checkout.complete",
+  "when": { "session.mode": "payment" },
+  "recorded": { "source": "hand-built", "stripe_api_version": "2025-12-30" },
+  "steps": [
+    {
+      "op": "create",
+      "type": "payment_intent",
+      "bind": "pi",
+      "state": {
+        "id": "{{id:pi}}",
+        "object": "payment_intent",
+        "created": "{{now}}",
+        "amount": "{{session.amount_total}}",
+        "currency": "{{session.currency}}",
+        "customer": "{{session.customer}}",
+        "status": "succeeded",
+        "livemode": false,
+        "metadata": {}
+      }
+    },
+    {
+      "op": "update",
+      "object": "session",
+      "set": {
+        "status": "complete",
+        "payment_status": "paid",
+        "payment_intent": "{{pi.id}}"
+      }
+    },
+    { "op": "emit", "event": "checkout.session.completed", "object": "session" }
+  ]
+}

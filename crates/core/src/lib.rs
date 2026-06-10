@@ -9,6 +9,7 @@
 //! process restart (the RNG stream position is persisted in `world.rng_state`).
 
 pub mod bus;
+pub mod cascade;
 pub mod clock;
 pub mod diff;
 pub mod error;
@@ -20,10 +21,11 @@ pub mod store;
 pub mod world;
 
 pub use bus::{Notification, NotificationBus};
+pub use cascade::CascadeLibrary;
 pub use error::{CoreError, Result};
 pub use event::{EventData, EventRequest, RequestCtx, StripeEvent};
 pub use rng::WorldRng;
-pub use world::{AdvanceReport, World};
+pub use world::{AdvanceReport, CascadeOutcome, World};
 
 /// The single Stripe API version this build is pinned to and stamps into every
 /// event's `api_version` field. See spec §3.
