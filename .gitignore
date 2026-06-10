@@ -1,0 +1,31 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+# Cargo.lock IS committed (this ships a binary) — do not ignore it.
+
+# Local databases / runtime state
+*.db
+*.db-wal
+*.db-shm
+/data/
+
+# Node / dashboard SPA
+dashboard-ui/node_modules/
+dashboard-ui/dist/
+crates/dashboard/dist/
+node_modules/
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
