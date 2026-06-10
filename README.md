@@ -15,8 +15,7 @@ Exercise your *whole* subscription flow — hosted checkout, renewals, payment f
 cancellation — and receive **real, signed webhooks** at a local endpoint. No network calls to
 Stripe. No Stripe credentials. No flakiness.
 
-[![CI](https://img.shields.io/badge/CI-pending-lightgrey)](https://github.com/indielabio/zebrafish/actions)
-[![conformance](https://img.shields.io/badge/conformance-stripe--api%20pending-lightgrey)](https://github.com/indielabio/zebrafish)
+[![CI](https://github.com/indielabio/zebrafish/actions/workflows/ci.yml/badge.svg)](https://github.com/indielabio/zebrafish/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](./LICENSE-APACHE)
 [![image](https://img.shields.io/badge/ghcr.io-indielabio%2Fzebrafish-2496ED?logo=docker&logoColor=white)](https://github.com/indielabio/zebrafish/pkgs/container/zebrafish)
