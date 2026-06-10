@@ -1,6 +1,12 @@
 <div align="center">
 
-# 🦓 zebrafish
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/zebrafish-mark-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="./assets/zebrafish-mark-light.svg">
+  <img src="./assets/zebrafish-mark-light.svg" alt="zebrafish" width="72" height="72">
+</picture>
+
+# zebrafish
 
 ### A Stripe-compatible model organism for your test suite.
 
