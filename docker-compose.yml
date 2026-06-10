@@ -1,0 +1,16 @@
+# Quickstart from the README (spec §14). Bring up the emulator alongside your
+# app; it auto-registers the webhook URL and prints the signing secret on boot.
+services:
+  zebrafish:
+    image: ghcr.io/indielabio/zebrafish:latest
+    ports:
+      - "4242:4242"
+    environment:
+      ZEBRAFISH_SEED: "42"
+      # Auto-registers this endpoint and prints the generated whsec_ on startup.
+      ZEBRAFISH_WEBHOOK_URL: "http://app:3000/webhooks"
+    volumes:
+      - zebrafish-data:/data
+
+volumes:
+  zebrafish-data:

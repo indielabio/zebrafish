@@ -1,0 +1,22 @@
+[package]
+name = "zebrafish-server"
+description = "Stripe-compatible local payment emulator — HTTP API, checkout page, webhooks, chaos."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "zebrafish"
+path = "src/main.rs"
+
+[lib]
+name = "zebrafish_server"
+
+[dependencies]
+zebrafish-core = { workspace = true }
+zebrafish-dashboard = { workspace = true }
+
+[lints]
+workspace = true

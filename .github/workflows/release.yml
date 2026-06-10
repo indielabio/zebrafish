@@ -1,0 +1,46 @@
+# Release pipeline. Triggered by pushing a version tag (e.g. v0.1.0).
+# Runs the full check suite, publishes the multi-arch image tagged with semver
+# (`latest`, `1.2.3`, `1.2`, `1`), and cuts a GitHub Release.
+#
+# Cut a release with:  git tag v0.1.0 && git push origin v0.1.0
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: ./.github/workflows/rust-checks.yml
+    secrets: inherit
+
+  image:
+    needs: checks
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/image.yml
+    with:
+      push: true
+    secrets: inherit
+
+  github-release:
+    needs: [checks, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            Multi-arch image: `ghcr.io/indielabio/zebrafish:${{ github.ref_name }}` (also `:latest`).
+            Stripe-compatible API version pinned in `zebrafish_core::STRIPE_API_VERSION`.
+
+  # TODO(WS-K): before tagging, gate on `acceptance`-tagged tests and a
+  #   testcontainers smoke run against the candidate image (spec §16.5).

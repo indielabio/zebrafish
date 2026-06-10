@@ -1,0 +1,27 @@
+# Codecov configuration. Coverage is reported but NOT merge-blocking yet — the
+# spec §16.2 per-crate gates (core >=95%, server >=85%, overall >=90%) get
+# enabled once real code exists. See TODO in .github/workflows/rust-checks.yml.
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true        # report only, never fail the PR (for now)
+    patch:
+      default:
+        informational: true
+
+comment:
+  layout: "reach, diff, flags, files"
+  require_changes: true
+
+# Per-crate flags so PRs can show core/server deltas separately once the
+# §16.2 thresholds are turned on.
+flag_management:
+  default_rules:
+    carryforward: true
+
+ignore:
+  - "crates/**/openapi/**"          # generated OpenAPI types
+  - "crates/server/src/main.rs"     # arg parsing
+  - "**/tests/**"

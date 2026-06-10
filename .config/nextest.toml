@@ -1,0 +1,19 @@
+# cargo-nextest configuration. See https://nexte.st/docs/configuration/
+
+[profile.default]
+# Surface every failure in a run rather than stopping at the first.
+fail-fast = false
+
+[profile.ci]
+# CI profile: bounded per-test time, machine-readable retries policy.
+fail-fast = false
+slow-timeout = { period = "30s", terminate-after = 2 }   # kill tests > 60s
+failure-output = "immediate-final"
+final-status-level = "flaky"
+
+# Target: zero tests carry the `flaky` tag. Until then, give them retries so a
+# single transient failure does not redden the whole run. Real flakiness is a
+# bug to fix, not a state to tolerate.
+[[profile.ci.overrides]]
+filter = "test(/flaky/)"
+retries = 2

@@ -1,0 +1,18 @@
+[package]
+name = "zebrafish-test-support"
+description = "Shared test harness for zebrafish: webhook capture, world builders, spawner."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "zebrafish_test_support"
+
+[dependencies]
+zebrafish-core = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,66 @@
+# Nightly checks (spec §16.5). Each job is gated and currently a stub — it
+# becomes active when its subsystem lands. Manual run via "Run workflow".
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # 07:00 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Conformance vs a REAL Stripe sandbox — diff emulator events against live
+  # test mode. Skipped until the secret is configured and WS-I/WS-E land.
+  conformance:
+    name: conformance-vs-stripe
+    if: ${{ vars.CONFORMANCE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      STRIPE_SANDBOX_KEY: ${{ secrets.STRIPE_SANDBOX_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      # TODO(WS-I): run `conformance/` against target=stripe and diff. On
+      # mismatch, write the diff to drift.md and open an issue from the file
+      # (body-file avoids any shell interpolation of generated content):
+      #   gh issue create --label drift --title "conformance drift $(date +%F)" \
+      #     --body-file drift.md
+      - run: echo "conformance harness not yet implemented (WS-I)"
+
+  # Mutation testing on core; surviving mutants become `weak-test` issues.
+  mutants:
+    name: cargo-mutants
+    if: ${{ vars.MUTANTS_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-mutants
+      - run: cargo mutants --package zebrafish-core --in-place || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutants-report
+          path: mutants.out/
+
+  # testcontainers smoke against the published :edge image.
+  smoke:
+    name: testcontainers-smoke
+    if: ${{ vars.SMOKE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      # TODO(WS-K): boot ghcr.io/indielabio/zebrafish:edge via testcontainers-rs,
+      # auto-register a webhook, run headless checkout, expect an event.
+      - run: echo "testcontainers smoke not yet implemented (WS-K)"
