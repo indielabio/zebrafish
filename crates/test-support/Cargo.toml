@@ -13,6 +13,7 @@ name = "zebrafish_test_support"
 
 [dependencies]
 zebrafish-core = { workspace = true }
+tempfile = "3"
 
 [lints]
 workspace = true
