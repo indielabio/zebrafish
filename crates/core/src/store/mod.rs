@@ -312,6 +312,238 @@ pub fn delete_webhook_endpoint(conn: &Connection, id: &str) -> Result<bool> {
     Ok(n > 0)
 }
 
+// --- delivery helpers ----------------------------------------------------------
+
+/// A row of the `deliveries` table (spec §4, §8): one webhook delivery attempt.
+#[derive(Debug, Clone)]
+pub struct DeliveryRow {
+    /// The delivery id (`del_...`).
+    pub id: String,
+    /// The delivered event.
+    pub event_id: String,
+    /// The destination endpoint.
+    pub endpoint_id: String,
+    /// 1-based attempt number per (event, endpoint).
+    pub attempt: i64,
+    /// The exact JSON body sent (the bytes the signature covers).
+    pub request_body: String,
+    /// The `Stripe-Signature` header value sent.
+    pub signature: String,
+    /// HTTP status returned by the app; `None` = connection failure/timeout.
+    pub status_code: Option<i64>,
+    /// The app's response body, if any.
+    pub response_body: Option<String>,
+    /// Wall-clock duration of the attempt.
+    pub duration_ms: Option<i64>,
+    /// Virtual-clock time of the attempt.
+    pub delivered_at: i64,
+}
+
+impl DeliveryRow {
+    /// The row as dashboard/config-plane JSON.
+    #[must_use]
+    pub fn to_json(&self) -> Value {
+        serde_json::json!({
+            "id": self.id,
+            "object": "delivery",
+            "event_id": self.event_id,
+            "endpoint_id": self.endpoint_id,
+            "attempt": self.attempt,
+            "request_body": self.request_body,
+            "signature": self.signature,
+            "status_code": self.status_code,
+            "response_body": self.response_body,
+            "duration_ms": self.duration_ms,
+            "delivered_at": self.delivered_at,
+        })
+    }
+}
+
+/// Insert a delivery-attempt row.
+pub fn put_delivery(conn: &Connection, row: &DeliveryRow) -> Result<()> {
+    conn.execute(
+        "INSERT INTO deliveries (id, event_id, endpoint_id, attempt, request_body,
+                                 signature, status_code, response_body, duration_ms, delivered_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            row.id,
+            row.event_id,
+            row.endpoint_id,
+            row.attempt,
+            row.request_body,
+            row.signature,
+            row.status_code,
+            row.response_body,
+            row.duration_ms,
+            row.delivered_at,
+        ],
+    )?;
+    Ok(())
+}
+
+fn delivery_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<DeliveryRow> {
+    Ok(DeliveryRow {
+        id: r.get(0)?,
+        event_id: r.get(1)?,
+        endpoint_id: r.get(2)?,
+        attempt: r.get(3)?,
+        request_body: r.get(4)?,
+        signature: r.get(5)?,
+        status_code: r.get(6)?,
+        response_body: r.get(7)?,
+        duration_ms: r.get(8)?,
+        delivered_at: r.get(9)?,
+    })
+}
+
+const DELIVERY_COLS: &str = "id, event_id, endpoint_id, attempt, request_body, \
+                             signature, status_code, response_body, duration_ms, delivered_at";
+
+/// All delivery attempts, newest first.
+pub fn list_deliveries(conn: &Connection) -> Result<Vec<DeliveryRow>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {DELIVERY_COLS} FROM deliveries ORDER BY delivered_at DESC, id DESC"
+    ))?;
+    let rows = stmt.query_map([], delivery_from_row)?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row?);
+    }
+    Ok(out)
+}
+
+/// Delivery attempts for one event, oldest first (attempt order).
+pub fn deliveries_for_event(conn: &Connection, event_id: &str) -> Result<Vec<DeliveryRow>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {DELIVERY_COLS} FROM deliveries WHERE event_id = ?1
+         ORDER BY delivered_at ASC, attempt ASC, id ASC"
+    ))?;
+    let rows = stmt.query_map(params![event_id], delivery_from_row)?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row?);
+    }
+    Ok(out)
+}
+
+/// The next attempt number for (event, endpoint): `max(attempt) + 1`.
+pub fn next_attempt(conn: &Connection, event_id: &str, endpoint_id: &str) -> Result<i64> {
+    let max: Option<i64> = conn.query_row(
+        "SELECT MAX(attempt) FROM deliveries WHERE event_id = ?1 AND endpoint_id = ?2",
+        params![event_id, endpoint_id],
+        |r| r.get(0),
+    )?;
+    Ok(max.unwrap_or(0) + 1)
+}
+
+// --- chaos rule helpers ----------------------------------------------------------
+
+/// A row of the `chaos_rules` table (spec §4, §9).
+#[derive(Debug, Clone)]
+pub struct ChaosRuleRow {
+    /// The rule id (`chaos_...`).
+    pub id: String,
+    /// The rule JSON (`match` + `action`) exactly as posted.
+    pub rule: Value,
+    /// Remaining applications; `None` = unlimited.
+    pub remaining: Option<i64>,
+    /// Virtual-clock expiry; `None` = no TTL.
+    pub expires_at: Option<i64>,
+}
+
+impl ChaosRuleRow {
+    /// The row as config-plane JSON.
+    #[must_use]
+    pub fn to_json(&self) -> Value {
+        let mut v = self.rule.clone();
+        v["id"] = Value::String(self.id.clone());
+        v["remaining"] = self.remaining.map_or(Value::Null, Into::into);
+        v["expires_at"] = self.expires_at.map_or(Value::Null, Into::into);
+        v
+    }
+}
+
+/// Insert or replace a chaos rule.
+pub fn put_chaos_rule(conn: &Connection, row: &ChaosRuleRow) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO chaos_rules (id, rule, remaining, expires_at)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![
+            row.id,
+            serde_json::to_string(&row.rule)?,
+            row.remaining,
+            row.expires_at,
+        ],
+    )?;
+    Ok(())
+}
+
+/// All chaos rules that are neither exhausted nor expired at virtual time
+/// `now`, oldest id first (creation order — ids are drawn sequentially).
+pub fn list_chaos_rules(conn: &Connection, now: i64) -> Result<Vec<ChaosRuleRow>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, rule, remaining, expires_at FROM chaos_rules
+         WHERE (remaining IS NULL OR remaining > 0)
+           AND (expires_at IS NULL OR expires_at > ?1)
+         ORDER BY rowid ASC",
+    )?;
+    let rows = stmt.query_map(params![now], |r| {
+        Ok((
+            r.get::<_, String>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, Option<i64>>(2)?,
+            r.get::<_, Option<i64>>(3)?,
+        ))
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (id, rule, remaining, expires_at) = row?;
+        out.push(ChaosRuleRow {
+            id,
+            rule: serde_json::from_str(&rule)?,
+            remaining,
+            expires_at,
+        });
+    }
+    Ok(out)
+}
+
+/// Atomically consume one application of a rule: decrement `remaining` if
+/// bounded, deleting the row when exhausted (spec §9: auto-delete).
+pub fn consume_chaos_rule(conn: &Connection, id: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE chaos_rules SET remaining = remaining - 1
+         WHERE id = ?1 AND remaining IS NOT NULL",
+        params![id],
+    )?;
+    conn.execute(
+        "DELETE FROM chaos_rules WHERE id = ?1 AND remaining IS NOT NULL AND remaining <= 0",
+        params![id],
+    )?;
+    Ok(())
+}
+
+/// Delete expired rules (spec §9: expired rules auto-delete).
+pub fn purge_expired_chaos(conn: &Connection, now: i64) -> Result<()> {
+    conn.execute(
+        "DELETE FROM chaos_rules WHERE expires_at IS NOT NULL AND expires_at <= ?1",
+        params![now],
+    )?;
+    Ok(())
+}
+
+/// Delete one chaos rule. Returns whether a row was removed.
+pub fn delete_chaos_rule(conn: &Connection, id: &str) -> Result<bool> {
+    let n = conn.execute("DELETE FROM chaos_rules WHERE id = ?1", params![id])?;
+    Ok(n > 0)
+}
+
+/// Delete all chaos rules.
+pub fn clear_chaos_rules(conn: &Connection) -> Result<()> {
+    conn.execute("DELETE FROM chaos_rules", [])?;
+    Ok(())
+}
+
 // --- world row helpers -------------------------------------------------------
 
 /// Insert or replace the singleton world row.

@@ -9,6 +9,7 @@
 //! process restart (the RNG stream position is persisted in `world.rng_state`).
 
 pub mod bus;
+pub mod cards;
 pub mod cascade;
 pub mod clock;
 pub mod diff;
@@ -21,6 +22,7 @@ pub mod store;
 pub mod world;
 
 pub use bus::{Notification, NotificationBus};
+pub use cards::{CardOutcome, ChargeContext, card_outcome, outcome_from_last4};
 pub use cascade::CascadeLibrary;
 pub use error::{CoreError, Result};
 pub use event::{EventData, EventRequest, RequestCtx, StripeEvent};
